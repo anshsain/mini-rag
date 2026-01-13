@@ -1,10 +1,13 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-dotenv
+
 langchain
 langchain-openai
 langchain-community
+
 qdrant-client
 cohere
 tiktoken
-pydantic
+
+pydantic<2
