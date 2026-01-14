@@ -6,7 +6,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -15,11 +15,14 @@ app.add_middleware(
 class QueryRequest(BaseModel):
     question: str
 
+class QueryResponse(BaseModel):
+    answer: str
+
 @app.get("/")
 def health():
     return {"status": "Backend is running"}
 
-@app.post("/query")
+@app.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest):
     return {
         "answer": f"You asked: '{req.question}'. RAG logic will go here."
