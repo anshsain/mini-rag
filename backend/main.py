@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 from pydantic import BaseModel
@@ -44,6 +45,11 @@ embeddings = OpenAIEmbeddings(
     openai_api_key=OPENAI_API_KEY
 )
 
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    google_api_key=os.getenv("GEMINI_API_KEY"),
+    temperature=0
+)
 
 vectorstore = Qdrant(
     client,
@@ -63,9 +69,28 @@ def health():
 
 @app.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest):
-    return {
-        "answer": f"You asked: '{req.question}'. RAG logic will go here."
-    }
+    docs = vectorstore.similarity_search(req.question, k=3)
+
+    if not docs:
+        return {"answer": "I could not find an answer in the provided document."}
+
+    context = "\n\n".join([doc.page_content for doc in docs])
+
+    prompt = f"""
+Use ONLY the context below to answer the question.
+If the answer is not in the context, say you don't know.
+
+Context:
+{context}
+
+Question:
+{req.question}
+"""
+
+    response = llm.invoke(prompt)
+
+    return {"answer": response.content}
+
 
 @app.post("/ingest")
 def ingest(req: IngestRequest):
