@@ -14,28 +14,28 @@ The focus of this project is **correct RAG architecture and clarity**, not UI po
 
 ## Live Demo
 
-- **Frontend**: https://mini-rag-xi.vercel.app/
-- **Backend**: https://mini-rag-backend-njdx.onrender.com/
+- **Frontend**: https://mini-rag-xi.vercel.app
+- **Backend**: https://mini-rag-backend-njdx.onrender.com
 
 ---
 
 ## Architecture Overview
 User
-↓
+-
 Next.js Frontend
-↓
+-
 FastAPI Backend
-↓
+-
 Document Chunking (1000 tokens, 10% overlap)
-↓
+-
 Embeddings (OpenAI)
-↓
+-
 Vector Storage (Qdrant)
-↓
+-
 Retrieval (Top-k semantic search)
-↓
+-
 Reranking (Cohere)
-↓
+-
 Answer Generation with citations
 
 
@@ -114,3 +114,17 @@ Reranking improves answer precision before passing context to the LLM.
   - Use only retrieved context
   - If answer is not found, explicitly say so
   - Include inline citations
+ 
+---
+
+## API Endpoints
+
+### `GET /`
+Health check endpoint.
+
+### `POST /ingest`
+Accepts a document, chunks it, embeds it, and stores vectors in Qdrant.
+
+### `POST /query`
+Accepts a user query and returns a grounded answer with citations.
+
