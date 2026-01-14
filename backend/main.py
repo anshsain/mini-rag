@@ -64,3 +64,15 @@ def query(req: QueryRequest):
     return {
         "answer": f"You asked: '{req.question}'. RAG logic will go here."
     }
+
+@app.post("/ingest")
+def ingest(req: IngestRequest):
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=100
+    )
+
+    docs = splitter.create_documents([req.text])
+    vectorstore.add_documents(docs)
+
+    return {"status": "Document ingested", "chunks": len(docs)}
