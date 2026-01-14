@@ -21,21 +21,21 @@ The focus of this project is **correct RAG architecture and clarity**, not UI po
 
 ## Architecture Overview
 User
--
+->
 Next.js Frontend
--
+->
 FastAPI Backend
--
+->
 Document Chunking (1000 tokens, 10% overlap)
--
+->
 Embeddings (OpenAI)
--
+->
 Vector Storage (Qdrant)
--
+->
 Retrieval (Top-k semantic search)
--
+->
 Reranking (Cohere)
--
+->
 Answer Generation with citations
 
 
