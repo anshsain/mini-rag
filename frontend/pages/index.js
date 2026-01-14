@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 export default function Home() {
+  console.log("Backend URL:", process.env.NEXT_PUBLIC_BACKEND_URL);
+  
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
