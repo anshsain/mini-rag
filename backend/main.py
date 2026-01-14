@@ -40,8 +40,10 @@ client = QdrantClient(
 )
 
 embeddings = OpenAIEmbeddings(
+    model="text-embedding-3-small",
     openai_api_key=OPENAI_API_KEY
 )
+
 
 vectorstore = Qdrant(
     client,
