@@ -1,22 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.vectorstores import Qdrant
-from qdrant_client import QdrantClient
-from pydantic import BaseModel
 import os
 
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Qdrant
+from qdrant_client import QdrantClient
+
+# ---------------------------
+# App setup
+# ---------------------------
 app = FastAPI()
-
-class IngestRequest(BaseModel):
-    text: str
-
-class QueryRequest(BaseModel):
-    question: str
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,36 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-import os
-from qdrant_client import QdrantClient
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Qdrant
-
-QDRANT_URL = os.getenv("QDRANT_URL")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-client = QdrantClient(
-    url=QDRANT_URL,
-    api_key=QDRANT_API_KEY,
-)
-
-embeddings = OpenAIEmbeddings(
-    model="text-embedding-3-small",
-    openai_api_key=OPENAI_API_KEY
-)
-
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    google_api_key=os.getenv("GEMINI_API_KEY"),
-    temperature=0
-)
-
-vectorstore = Qdrant(
-    client,
-    collection_name="mini_rag_docs",
-    embeddings=embeddings,
-)
+# ---------------------------
+# Request / Response models
+# ---------------------------
+class IngestRequest(BaseModel):
+    text: str
 
 class QueryRequest(BaseModel):
     question: str
@@ -63,9 +34,57 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
 
+# ---------------------------
+# Qdrant + Embeddings
+# ---------------------------
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
+client = QdrantClient(
+    url=QDRANT_URL,
+    api_key=QDRANT_API_KEY,
+)
+
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
+
+vectorstore = Qdrant(
+    client=client,
+    collection_name="mini_rag_docs",
+    embeddings=embeddings,
+)
+
+# ---------------------------
+# Gemini LLM
+# ---------------------------
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    google_api_key=os.getenv("GEMINI_API_KEY"),
+    temperature=0
+)
+
+# ---------------------------
+# Routes
+# ---------------------------
 @app.get("/")
 def health():
     return {"status": "Backend is running"}
+
+@app.post("/ingest")
+def ingest(req: IngestRequest):
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=100
+    )
+
+    docs = splitter.create_documents([req.text])
+    vectorstore.add_documents(docs)
+
+    return {
+        "status": "Document ingested",
+        "chunks": len(docs)
+    }
 
 @app.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest):
@@ -74,7 +93,7 @@ def query(req: QueryRequest):
     if not docs:
         return {"answer": "I could not find an answer in the provided document."}
 
-    context = "\n\n".join([doc.page_content for doc in docs])
+    context = "\n\n".join(doc.page_content for doc in docs)
 
     prompt = f"""
 Use ONLY the context below to answer the question.
@@ -88,18 +107,4 @@ Question:
 """
 
     response = llm.invoke(prompt)
-
     return {"answer": response.content}
-
-
-@app.post("/ingest")
-def ingest(req: IngestRequest):
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=100
-    )
-
-    docs = splitter.create_documents([req.text])
-    vectorstore.add_documents(docs)
-
-    return {"status": "Document ingested", "chunks": len(docs)}
