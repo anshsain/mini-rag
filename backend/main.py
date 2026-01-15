@@ -10,7 +10,7 @@ from langchain_community.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 
 # ---------------------------
-# App setup
+# App setup (LIGHTWEIGHT ONLY)
 # ---------------------------
 app = FastAPI()
 
@@ -21,6 +21,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------------------
+# Globals (initialized on startup)
+# ---------------------------
+vectorstore = None
+llm = None
 
 # ---------------------------
 # Request / Response models
@@ -35,34 +41,46 @@ class QueryResponse(BaseModel):
     answer: str
 
 # ---------------------------
-# Qdrant + Embeddings
+# Startup event (HEAVY WORK HERE)
 # ---------------------------
-QDRANT_URL = os.getenv("QDRANT_URL")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+@app.on_event("startup")
+def startup_event():
+    global vectorstore, llm
 
-client = QdrantClient(
-    url=QDRANT_URL,
-    api_key=QDRANT_API_KEY,
-)
+    # ---- Qdrant ----
+    QDRANT_URL = os.getenv("QDRANT_URL")
+    QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+    if not QDRANT_URL or not QDRANT_API_KEY:
+        raise RuntimeError("QDRANT_URL or QDRANT_API_KEY not set")
 
-vectorstore = Qdrant(
-    client=client,
-    collection_name="mini_rag_docs",
-    embeddings=embeddings,
-)
+    client = QdrantClient(
+        url=QDRANT_URL,
+        api_key=QDRANT_API_KEY,
+    )
 
-# ---------------------------
-# Gemini LLM
-# ---------------------------
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    google_api_key=os.getenv("GEMINI_API_KEY"),
-    temperature=0
-)
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
+
+    vectorstore = Qdrant(
+        client=client,
+        collection_name="mini_rag_docs",
+        embeddings=embeddings,
+    )
+
+    # ---- Gemini ----
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY not set")
+
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        google_api_key=GEMINI_API_KEY,
+        temperature=0
+    )
+
+    print("✅ Startup complete: Qdrant + Gemini initialized")
 
 # ---------------------------
 # Routes
