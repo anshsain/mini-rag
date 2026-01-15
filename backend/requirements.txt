@@ -1,5 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+
 langchain
 langchain-community
 langchain-google-genai
+langchain.text_splitte
 qdrant-client
 sentence-transformers
