@@ -59,9 +59,10 @@ def startup_event():
         api_key=QDRANT_API_KEY,
     )
 
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    HuggingFaceEmbeddings(
+        model_name="sentence-transformers/paraphrase-MiniLM-L3-v2"
     )
+
 
     vectorstore = Qdrant(
         client=client,
